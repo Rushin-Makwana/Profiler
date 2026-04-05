@@ -1,0 +1,19 @@
+Method Signature,Invocations,Total Execution Time (ms)
+"java.util.ArrayList.grow(int)",139,0.37398
+"java.util.ArrayList.grow()",1001,6.28646
+"java.util.ArrayList.isEmpty()",1719,0.71056
+"java.util.ArrayList.subList(int,int)",1,0.02565
+"java.util.ArrayList.addAll(java.util.Collection)",112,1.24182
+"java.util.ArrayList.iterator()",1039,6.27643
+"java.util.ArrayList$Itr.next()",3275,6.67329
+"java.util.ArrayList.size()",269,0.25062
+"java.util.ArrayList.elementData(int)",19,0.01037
+"java.util.ArrayList.add(java.lang.Object,java.lang.Object[],int)",5983,11.18617
+"java.util.ArrayList.add(java.lang.Object)",5984,34.43909
+"java.util.ArrayList$Itr.hasNext()",4006,1.26632
+"java.util.ArrayList.getFirst()",6,0.04765
+"java.util.ArrayList$SubList.toArray(java.lang.Object[])",1,0.07753
+"java.util.ArrayList$Itr.checkForComodification()",3283,1.19949
+"java.util.ArrayList.get(int)",13,0.05891
+"java.util.ArrayList$SubList.checkForComodification()",1,0.01032
+"java.util.ArrayList.toArray()",113,0.42016
