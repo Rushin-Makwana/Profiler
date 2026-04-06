@@ -13,7 +13,15 @@ import java.util.Arrays;
 public class AgentInstaller {
 
     public static void install(String agentArgs, Instrumentation inst, String jarPath) {
-        String[] packages = { "com.ag" }; // default
+        // Default list of allowable classes and packages
+        String[] packages = {
+                "pom", "padl", "java.util", "java.io", "java.lang", "java.net", "jdk",
+                "java.internal", "java.reflection", "org.apache.commons", "org.slf4j",
+                "java.nio", "java.math", "java.awt", "java.security", "util", "org.junit",
+                "org.apache.logging", "sun", "org.apache.maven", "junit", "com",
+                "java.sql", "org.springframework", "javax"
+        };
+
         if (agentArgs != null && !agentArgs.isEmpty()) {
             packages = agentArgs.split(",");
         }
@@ -23,7 +31,23 @@ public class AgentInstaller {
         // Add shutdown hook to write CSV
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[ProfilerAgent] JVM shutting down. Writing statistics to CSV...");
-            CallStatistics.writeToCsv("profiler_results.csv");
+            CallStatistics.writeToCsv("Output/profiler_results.csv");
+
+            // To solve the race condition with JoularJX's simultaneous shutdown hook,
+            // we intentionally stall our hook for 3 seconds. This forces the JVM to stay
+            // alive
+            // and gives JoularJX's concurrent shutdown thread plenty of time to fully flush
+            // its CSVs.
+            try {
+                System.out.println("[ProfilerAgent] Pausing for 3 seconds to allow JoularJX CSV flush...");
+                Thread.sleep(3000);
+            } catch (InterruptedException ignored) {
+            }
+
+            // Automatically merge with any generated JoularJX energy CSV files
+            System.out.println("[ProfilerAgent] Triggering automatic CSV merge...");
+            EnergyMerger.merge("Output/profiler_results.csv",
+                    System.getProperty("user.dir") + "/Output/joularJX-123-all-methods-energy.csv");
         }));
 
         // Matcher for packages exactly.
