@@ -33,21 +33,10 @@ public class AgentInstaller {
             System.out.println("[ProfilerAgent] JVM shutting down. Writing statistics to CSV...");
             CallStatistics.writeToCsv("Output/profiler_results.csv");
 
-            // To solve the race condition with JoularJX's simultaneous shutdown hook,
-            // we intentionally stall our hook for 3 seconds. This forces the JVM to stay
-            // alive
-            // and gives JoularJX's concurrent shutdown thread plenty of time to fully flush
-            // its CSVs.
-            try {
-                System.out.println("[ProfilerAgent] Pausing for 3 seconds to allow JoularJX CSV flush...");
-                Thread.sleep(3000);
-            } catch (InterruptedException ignored) {
-            }
-
             // Automatically merge with any generated JoularJX energy CSV files
             System.out.println("[ProfilerAgent] Triggering automatic CSV merge...");
             EnergyMerger.merge("Output/profiler_results.csv",
-                    System.getProperty("user.dir") + "/Output/joularJX-123-all-methods-energy.csv");
+                    System.getProperty("user.dir") + "Output/joularJX-123-all-methods-energy.csv");
         }));
 
         // Matcher for packages exactly.
@@ -86,8 +75,8 @@ public class AgentInstaller {
                                 net.bytebuddy.dynamic.ClassFileLocator.ForModule.ofBootLayer());
                     }
                 })
-                .with(AgentBuilder.Listener.StreamWriting.toSystemError().withErrorsOnly())
-                .with(AgentBuilder.Listener.StreamWriting.toSystemOut().withTransformationsOnly())
+                // .with(AgentBuilder.Listener.StreamWriting.toSystemError().withErrorsOnly())
+                // .with(AgentBuilder.Listener.StreamWriting.toSystemOut().withTransformationsOnly())
                 .ignore(internalIgnores)
                 .type(typeMatcher)
                 .transform((builder, typeDescription, classLoader, module, protectionDomain) -> {
