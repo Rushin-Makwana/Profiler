@@ -10,7 +10,7 @@ public class Launcher {
         String customAgent = "../../../AGInstrument/target/profiler-agent-1.0-SNAPSHOT.jar";
         String joularAgent = "../../../joularjx/target/joularjx-3.1.0.jar";
         String outputDir = "../Ptidej/ptidej-Ptidej/POM/Output";
-        int NumOfRuns = 10;
+        int NumOfRuns = 20;
 
         try {
             System.out.println("=== Phase 1: Running Custom Profiler ===");

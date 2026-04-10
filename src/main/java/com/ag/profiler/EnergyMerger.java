@@ -76,47 +76,70 @@ public class EnergyMerger {
             System.err.println("[EnergyMerger] Failed to write intermediate average CSV: " + e.getMessage());
         }
 
-        // Inner join both
-        Set<String> intersection = new HashSet<>(profilerData.keySet());
-        intersection.retainAll(joularData.keySet());
+        // ---------------------------------------------------------------
+        // Build secondary indexes for fuzzy matching
+        // ---------------------------------------------------------------
+        // Index 1: class.methodName -> list of JoularEntries (overload matching)
+        Map<String, List<JoularEntry>> joularByMethodName = new HashMap<>();
+        // Index 2: className -> list of JoularEntries (class-level fallback)
+        Map<String, List<JoularEntry>> joularByClassName = new HashMap<>();
 
-        System.out.println("[EnergyMerger] Found " + intersection.size() + " correlated methods. Writing output...");
+        for (Map.Entry<String, JoularEntry> e : joularData.entrySet()) {
+            String sig = e.getKey();
+            JoularEntry je = e.getValue();
+
+            // class.method key (strip params)
+            String methodKey = sig.contains("(") ? sig.substring(0, sig.indexOf('(')) : sig;
+            joularByMethodName.computeIfAbsent(methodKey, k -> new ArrayList<>()).add(je);
+
+            // class key (everything before last '.')
+            int lastDot = methodKey.lastIndexOf('.');
+            if (lastDot > 0) {
+                String classKey = methodKey.substring(0, lastDot);
+                joularByClassName.computeIfAbsent(classKey, k -> new ArrayList<>()).add(je);
+            }
+        }
 
         String outputFilename = "../Ptidej/ptidej-Ptidej/POM/Results/merged_profiling_energy_results.csv";
         try (PrintWriter pw = new PrintWriter(new FileWriter(outputFilename))) {
-            pw.println("Method Signature,Invocation(s),Execution Time (ms), Energy (J)");
-            for (String sig : intersection) {
-                ProfilerEntry p = profilerData.get(sig);
-                JoularEntry j = joularData.get(sig);
-                pw.printf("\"%s\",%s,%s,%.5f%n",
-                        sig, p.invocations, p.timeMs, j.getAverageEnergy());
+            pw.println("Method Signature,Invocation(s),Execution Time (ms),Energy (J)");
+
+            for (Map.Entry<String, ProfilerEntry> pe : profilerData.entrySet()) {
+                String sig = pe.getKey();
+                ProfilerEntry p = pe.getValue();
+                double energy;
+
+                // exact signature match
+                JoularEntry exactMatch = joularData.get(sig);
+                if (exactMatch != null) {
+                    energy = exactMatch.getAverageEnergy();
+                } else {
+                    // same class.method name (overloaded method)
+                    String methodKey = sig.contains("(") ? sig.substring(0, sig.indexOf('(')) : sig;
+                    List<JoularEntry> overloads = joularByMethodName.get(methodKey);
+                    if (overloads != null && !overloads.isEmpty()) {
+                        energy = overloads.stream().mapToDouble(JoularEntry::getAverageEnergy).average().orElse(0.0);
+                    } else {
+                        // lass-level average
+                        int lastDot = methodKey.lastIndexOf('.');
+                        String classKey = lastDot > 0 ? methodKey.substring(0, lastDot) : methodKey;
+                        List<JoularEntry> classEntries = joularByClassName.get(classKey);
+                        if (classEntries != null && !classEntries.isEmpty()) {
+                            energy = classEntries.stream().mapToDouble(JoularEntry::getAverageEnergy).average()
+                                    .orElse(0.0);
+                        } else {
+                            energy = 0.0;
+                        }
+                    }
+                }
+
+                pw.printf("\"%s\",%s,%s,%.10f%n",
+                        sig, p.invocations, p.timeMs, energy);
             }
         } catch (Exception e) {
             System.err.println("[EnergyMerger] Failed to write merged CSV: " + e.getMessage());
         }
 
-        System.out.println("[EnergyMerger] Intersection output successfully saved to " + outputFilename);
-
-        // Left Outer Join (Profiler Data Projected onto Energy)
-        System.out.println("[EnergyMerger] Generating projection for all " + profilerData.size()
-                + " profiler methods...");
-        String projectedFilename = "../Ptidej/ptidej-Ptidej/POM/Results/projected_profiling_energy_results.csv";
-        try (PrintWriter pw = new PrintWriter(new FileWriter(projectedFilename))) {
-            pw.println("Method Signature,Invocation(s),Execution Time (ms),Average Energy (J)");
-            for (Map.Entry<String, ProfilerEntry> entry : profilerData.entrySet()) {
-                String sig = entry.getKey();
-                ProfilerEntry p = entry.getValue();
-                JoularEntry j = joularData.get(sig);
-                String avgEnergy = (j != null) ? String.format(java.util.Locale.US, "%.5f", j.getAverageEnergy()) : "-";
-
-                pw.printf("\"%s\",%s,%s,%s%n",
-                        sig, p.invocations, p.timeMs, avgEnergy);
-            }
-        } catch (Exception e) {
-            System.err.println("[EnergyMerger] Failed to write projected CSV: " + e.getMessage());
-        }
-
-        System.out.println("[EnergyMerger] Projection successfully saved to " + projectedFilename);
     }
 
     private static void processJoularFile(File file, Map<String, JoularEntry> joularData) {
