@@ -123,14 +123,17 @@ public class EnergyMerger {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             String line;
             while ((line = br.readLine()) != null) {
-                // The CSV has NO header. Format is strictly: "MethodSignature",Energy
-                String[] parts = line.split(",(?=([^\\\"]*\\\"[^\\\"]*\\\")*[^\\\"]*$)");
-                if (parts.length >= 2) {
-                    String sig = normalizeSignature(parts[0].replace("\"", ""));
+                int lastComma = line.lastIndexOf(',');
+                if (lastComma > 0 && lastComma < line.length() - 1) {
+                    String rawSig = line.substring(0, lastComma).trim();
+                    // Strip quotes if they were added
+                    if (rawSig.startsWith("\"") && rawSig.endsWith("\"") && rawSig.length() >= 2) {
+                        rawSig = rawSig.substring(1, rawSig.length() - 1);
+                    }
+                    String sig = normalizeSignature(rawSig);
 
                     try {
-                        // In JoularJX headerless output, energy is the second column (index 1)
-                        double energy = Double.parseDouble(parts[1]);
+                        double energy = Double.parseDouble(line.substring(lastComma + 1).trim());
 
                         JoularEntry entry = joularData.computeIfAbsent(sig, k -> new JoularEntry());
                         entry.add(energy);
