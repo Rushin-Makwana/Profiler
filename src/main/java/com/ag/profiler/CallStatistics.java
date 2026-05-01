@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CallStatistics {
-    
+
     private static final Map<String, MethodMetrics> metrics = new ConcurrentHashMap<>();
 
     public static void recordCall(String methodSignature, long durationNs) {
@@ -29,12 +29,13 @@ public class CallStatistics {
     private static String formatMethodSignature(String raw) {
         int idx1 = raw.indexOf('|');
         int idx2 = raw.indexOf('|', idx1 + 1);
-        if (idx1 < 0 || idx2 < 0) return raw;
-        
+        if (idx1 < 0 || idx2 < 0)
+            return raw;
+
         String cls = raw.substring(0, idx1);
         String method = raw.substring(idx1 + 1, idx2);
         String desc = raw.substring(idx2 + 1);
-        
+
         try {
             net.bytebuddy.jar.asm.Type[] argTypes = net.bytebuddy.jar.asm.Type.getArgumentTypes(desc);
             StringBuilder sb = new StringBuilder(cls).append(".").append(method).append("(");
@@ -57,7 +58,8 @@ public class CallStatistics {
             for (Map.Entry<String, MethodMetrics> entry : metrics.entrySet()) {
                 double totalMs = entry.getValue().getTotalTimeNs() / 1_000_000.0;
                 long count = entry.getValue().getInvocations();
-                pw.println("\"" + entry.getKey() + "\"," + count + "," + String.format(java.util.Locale.US, "%.5f", totalMs));
+                pw.println("\"" + entry.getKey() + "\"," + count + ","
+                        + String.format(java.util.Locale.US, "%.5f", totalMs));
             }
         } catch (IOException e) {
             System.err.println("[ProfilerAgent] Failed to write statistics to CSV: " + e.getMessage());

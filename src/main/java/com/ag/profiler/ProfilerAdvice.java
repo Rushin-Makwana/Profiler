@@ -13,14 +13,14 @@ public class ProfilerAdvice {
     };
 
     @Advice.OnMethodEnter
-    public static void onEnter(@Advice.Origin("#t|#m|#d") String methodSignature, 
-                               @Advice.Local("startTime") long startTime) {
+    public static void onEnter(@Advice.Origin("#t|#m|#d") String methodSignature,
+            @Advice.Local("startTime") long startTime) {
         startTime = System.nanoTime();
     }
 
     @Advice.OnMethodExit(onThrowable = Throwable.class)
-    public static void onExit(@Advice.Origin("#t|#m|#d") String methodSignature, 
-                              @Advice.Local("startTime") long startTime) {
+    public static void onExit(@Advice.Origin("#t|#m|#d") String methodSignature,
+            @Advice.Local("startTime") long startTime) {
         if (IN_PROFILER.get()) {
             return;
         }

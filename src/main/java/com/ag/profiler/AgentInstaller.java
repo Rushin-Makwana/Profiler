@@ -9,17 +9,19 @@ import net.bytebuddy.matcher.ElementMatchers;
 
 import java.lang.instrument.Instrumentation;
 import java.util.Arrays;
+import java.io.File;
 
 public class AgentInstaller {
 
     public static void install(String agentArgs, Instrumentation inst, String jarPath) {
-        // Default list of allowable classes and packages
+        // This is an ALLOW-LIST of packages to instrument.
+        // We MUST include "ca" to instrument your TestWorkload classes.
         String[] packages = {
                 "pom", "padl", "java.util", "java.io", "java.lang", "java.net", "jdk",
                 "java.internal", "java.reflection", "org.apache.commons", "org.slf4j",
                 "java.nio", "java.math", "java.awt", "java.security", "util", "org.junit",
                 "org.apache.logging", "sun", "org.apache.maven", "junit", "com",
-                "java.sql", "org.springframework", "javax"
+                "java.sql", "org.springframework", "javax", "ca"
         };
 
         if (agentArgs != null && !agentArgs.isEmpty()) {
@@ -31,12 +33,19 @@ public class AgentInstaller {
         // Add shutdown hook to write CSV
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             System.out.println("[ProfilerAgent] JVM shutting down. Writing statistics to CSV...");
-            CallStatistics.writeToCsv("Output/profiler_results.csv");
+            
+            // Ensure Output directory exists relative to current working directory (SPECTRA/)
+            File outputDir = new File("Output");
+            if (!outputDir.exists()) {
+                outputDir.mkdirs();
+            }
+
+            String profilerCsv = "Output/profiler_results.csv";
+            CallStatistics.writeToCsv(profilerCsv);
 
             // Automatically merge with any generated JoularJX energy CSV files
             System.out.println("[ProfilerAgent] Triggering automatic CSV merge...");
-            EnergyMerger.merge("Output/profiler_results.csv",
-                    System.getProperty("user.dir") + "Output/joularJX-123-all-methods-energy.csv");
+            EnergyMerger.merge(profilerCsv, "Output");
         }));
 
         // Matcher for packages exactly.
@@ -58,7 +67,6 @@ public class AgentInstaller {
         ElementMatcher.Junction<net.bytebuddy.description.type.TypeDescription> internalIgnores = ElementMatchers
                 .nameStartsWith("com.ag.profiler.")
                 .or(ElementMatchers.nameStartsWith("net.bytebuddy."))
-
                 .or(ElementMatchers.nameStartsWith("jdk.internal."));
 
         new AgentBuilder.Default()
@@ -75,8 +83,6 @@ public class AgentInstaller {
                                 net.bytebuddy.dynamic.ClassFileLocator.ForModule.ofBootLayer());
                     }
                 })
-                // .with(AgentBuilder.Listener.StreamWriting.toSystemError().withErrorsOnly())
-                // .with(AgentBuilder.Listener.StreamWriting.toSystemOut().withTransformationsOnly())
                 .ignore(internalIgnores)
                 .type(typeMatcher)
                 .transform((builder, typeDescription, classLoader, module, protectionDomain) -> {
